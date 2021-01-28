@@ -4,6 +4,7 @@ from aiida.common import CalcInfo, CodeInfo, InputValidationError
 from aiida.common.constants import elements
 from aiida.engine import CalcJob
 from aiida.orm import Dict, StructureData, BandsData, ArrayData
+from aiida.orm import TrajectoryData, SinglefileData
 from aiida_siesta.calculations.tkdict import FDFDict
 from aiida_siesta.data.psf import PsfData
 from aiida_siesta.data.psml import PsmlData
@@ -51,6 +52,9 @@ class SiestaCalculation(CalcJob):
     _DEFAULT_INPUT_FILE = 'aiida.fdf'
     _DEFAULT_OUTPUT_FILE = 'aiida.out'
 
+    _DEFAULT_NEB_RESULTS_FILE = 'NEB.results'
+    _DEFAULT_NEB_TANGENT_FILE = 'NEB.1.T'
+
     # in restarts, it will copy from the parent the following
     # (fow now, just the density matrix file)
     _restart_copy_from = os.path.join(_OUTPUT_SUBFOLDER, '*.DM')
@@ -70,6 +74,8 @@ class SiestaCalculation(CalcJob):
         spec.input('basis', valid_type=orm.Dict, help='Input basis', required=False)
         spec.input('settings', valid_type=orm.Dict, help='Input settings', required=False)
         spec.input('parameters', valid_type=orm.Dict, help='Input parameters')
+        spec.input('lua_script', valid_type=orm.SinglefileData, help='Lua script',required=False)
+        spec.input('neb_input_images', valid_type=orm.TrajectoryData, help='Starting NEB images', required=False)
         spec.input('parent_calc_folder', valid_type=orm.RemoteData, required=False, help='Parent folder')
         spec.input_namespace('pseudos', valid_type=(PsfData, PsmlData), help='Input pseudo potentials', dynamic=True)
 
@@ -87,6 +93,7 @@ class SiestaCalculation(CalcJob):
         spec.output('bands', valid_type=BandsData, required=False, help='Optional band structure')
         #spec.output('bands_parameters', valid_type=Dict, required=False, help='Optional parameters of bands')
         spec.output('forces_and_stress', valid_type=ArrayData, required=False, help='Optional forces and stress')
+        spec.output('neb_output_images', valid_type=TrajectoryData, required=False, help='Final NEB images')
         spec.output_namespace('ion_files', valid_type=IonData, dynamic=True, required=False)
 
         # Option that allows acces through node.res should be existing output node and a Dict
@@ -140,6 +147,16 @@ class SiestaCalculation(CalcJob):
         else:
             bandskpoints = None
 
+        if 'neb_input_images' in self.inputs:
+            neb_input_images = self.inputs.neb_input_images
+        else:
+            neb_input_images = None
+
+        if 'lua_script' in self.inputs:
+            lua_script = self.inputs.lua_script
+        else:
+            lua_script = None
+
         if 'parent_calc_folder' in self.inputs:
             parent_calc_folder = self.inputs.parent_calc_folder
         else:
@@ -192,6 +209,11 @@ class SiestaCalculation(CalcJob):
         input_params.update({'geometry-must-converge': 'T'})
         input_params.update({'lattice-constant': '1.0 Ang'})
         input_params.update({'atomic-coordinates-format': 'Ang'})
+
+        if lua_script is not None:
+            input_params.update({'md-type-of-run': 'Lua'})
+            input_params.update({'lua-script': lua_script.filename})
+            
         # NOTES:
         # 1) The lattice-constant parameter must be 1.0 Ang to impose the units and consider
         #   that the dimenstions of the lattice vectors are already correct with no need of alat.
@@ -361,6 +383,29 @@ class SiestaCalculation(CalcJob):
             ))
             input_params.update({'dm-use-save-dm': "T"})
 
+
+        #
+        # Creation of NEB image xyz files
+        #
+        # Refinements:
+        #  -- check that a lua script has been input
+        #  -- check that the lua script is NEB-capable...
+        #  -- find what the 'xyz image file prefix' is from the Lua script
+        #  -- if needed, replace k and #images in the Lua script...
+        if neb_input_images is not None:
+            # get kinds list from reference structure, in case they are not just symbols
+            kinds = structure.kinds
+
+            from aiida_siesta.utils.xyz_utils import write_xyz_file_from_structure
+            # loop over structures
+            for i in range(neb_input_images.numsteps):
+                s_image = neb_input_images.get_step_structure(i,custom_kinds=kinds)
+                # write a xyz file with a standard prefix in the folder
+                # Note that currently we do not want the labels in these files
+                filename= folder.get_abs_path("image_{}.xyz".format(i))
+                write_xyz_file_from_structure(s_image,filename,labels=False)
+
+        
         # ====================== FDF file creation ========================
 
         # To have easy access to inputs metadata options
@@ -434,8 +479,15 @@ class SiestaCalculation(CalcJob):
         calcinfo.retrieve_list.append(self._JSON_FILE)
         calcinfo.retrieve_list.append(self._MESSAGES_FILE)
         calcinfo.retrieve_list.append("*.ion.xml")
+
         if bandskpoints is not None:
             calcinfo.retrieve_list.append(bands_file)
+
+        # Retrieve xyz files if doing NEB
+        if neb_input_images is not None:
+            calcinfo.retrieve_list.append("image*.xyz")
+            # maybe add NEB_RESULTS file
+            
         # Any other files specified in the settings dictionary
         settings_retrieve_list = settings_dict.pop('ADDITIONAL_RETRIEVE_LIST', [])
         calcinfo.retrieve_list += settings_retrieve_list

@@ -350,6 +350,24 @@ class SiestaParser(Parser):
             arraydata.set_array('stress', np.array(stress))
             self.out('forces_and_stress', arraydata)
 
+        #
+        # Build a trajectory object from xyz files in retrieved folder
+        #
+        if 'neb_input_images' in self.node.inputs:
+            from aiida.orm import TrajectoryData
+            from aiida_siesta.utils.xyz_utils import get_structure_list_from_folder
+            
+            folder_path = output_folder._repository._get_base_folder().abspath
+            struct_list = get_structure_list_from_folder(folder_path, self.node.inputs.structure)
+
+            if len(struct_list) > 0:
+                traj = TrajectoryData(struct_list)
+                self.out('neb_output_images', traj)
+            else:
+                self.logger.warning("No .xyz files retrieved")
+                return self.exit_codes.NO_NEB_XYZ_FILES
+
+        
         #Attempt to parse the ion files.
         from aiida_siesta.data.ion import IonData
         ions = {}

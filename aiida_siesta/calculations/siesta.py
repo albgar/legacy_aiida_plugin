@@ -53,6 +53,7 @@ class SiestaCalculation(CalcJob):
     _DEFAULT_OUTPUT_FILE = 'aiida.out'
 
     _DEFAULT_NEB_RESULTS_FILE = 'NEB.results'
+    _DEFAULT_NEB_XYZ_PREFIX = 'image_'
     _DEFAULT_NEB_TANGENT_FILE = 'NEB.1.T'
 
     # in restarts, it will copy from the parent the following
@@ -81,11 +82,18 @@ class SiestaCalculation(CalcJob):
 
         # Metadada.options host the inputs that are not stored as a separate node, but attached to `CalcJobNode`
         # as attributes. They are optional, since a default is specified, but they might be changed by the user.
-        # The first one is siesta specific. The others are defined in the CalcJob, here we change the default.
+
+        # These are siesta-specific. 
         spec.input('metadata.options.prefix', valid_type=str, default=cls._DEFAULT_PREFIX)
+        spec.input('metadata.options.neb_results_file', valid_type=str, default=cls._DEFAULT_NEB_RESULTS_FILE)
+        spec.input('metadata.options.neb_xyz_prefix', valid_type=str, default=cls._DEFAULT_NEB_XYZ_PREFIX)
+
+        # These are defined in the CalcJob, and here we change the default.
         spec.inputs['metadata']['options']['input_filename'].default = cls._DEFAULT_INPUT_FILE
         spec.inputs['metadata']['options']['output_filename'].default = cls._DEFAULT_OUTPUT_FILE
         spec.inputs['metadata']['options']['parser_name'].default = 'siesta.parser'
+
+
 
         # Output nodes
         spec.output('output_parameters', valid_type=Dict, required=True, help='The calculation results')
@@ -107,6 +115,7 @@ class SiestaCalculation(CalcJob):
         spec.exit_code(350, 'UNEXPECTED_TERMINATION', message='Statement "Job completed" not detected, unknown error')
         spec.exit_code(449, 'SPLIT_NORM', message='Split_norm parameter too small')
         spec.exit_code(448, 'BASIS_POLARIZ', message='Problems in the polarization of a basis element')
+        spec.exit_code(440, 'NO_NEB_XYZ_FILES', message='No .xyz files found after NEB calculation')
 
     def prepare_for_submission(self, folder):  # noqa: MC0001  - is mccabe too complex funct -
         """
@@ -391,19 +400,19 @@ class SiestaCalculation(CalcJob):
         # Refinements:
         #  -- check that a lua script has been input
         #  -- check that the lua script is NEB-capable...
-        #  -- find what the 'xyz image file prefix' is from the Lua script
         #  -- if needed, replace k and #images in the Lua script...
         if neb_input_images is not None:
             # get kinds list from reference structure, in case they are not just symbols
             kinds = structure.kinds
-
+            neb_image_prefix = self.inputs.metadata.options.neb_xyz_prefix
+            
             from aiida_siesta.utils.xyz_utils import write_xyz_file_from_structure
             # loop over structures
             for i in range(neb_input_images.numsteps):
                 s_image = neb_input_images.get_step_structure(i,custom_kinds=kinds)
                 # write a xyz file with a standard prefix in the folder
                 # Note that currently we do not want the labels in these files
-                filename= folder.get_abs_path("image_{}.xyz".format(i))
+                filename= folder.get_abs_path("{}{}.xyz".format(neb_image_prefix,i))
                 write_xyz_file_from_structure(s_image,filename,labels=False)
 
         
@@ -487,7 +496,8 @@ class SiestaCalculation(CalcJob):
         # Retrieve xyz files if doing NEB
         if neb_input_images is not None:
             calcinfo.retrieve_list.append("image*.xyz")
-            # maybe add NEB_RESULTS file
+            if lua_script is not None:
+                calcinfo.retrieve_list.append(metadataoption.neb_results_file)
             
         # Any other files specified in the settings dictionary
         settings_retrieve_list = settings_dict.pop('ADDITIONAL_RETRIEVE_LIST', [])

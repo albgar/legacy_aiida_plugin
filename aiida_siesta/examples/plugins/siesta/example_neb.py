@@ -8,7 +8,7 @@ import sys
 from aiida.engine import submit
 from aiida.orm import load_code
 from aiida.orm import (Dict, StructureData, KpointsData)
-from aiida.orm import TrajectoryData
+from aiida.orm import TrajectoryData, SinglefileData
 from aiida_siesta.calculations.siesta import SiestaCalculation
 from aiida_siesta.utils.xyz_utils import get_structure_list_from_folder
 from aiida_siesta.data.psf import PsfData
@@ -60,27 +60,48 @@ s.append_atom(position=(-0.757,  2.914,  0.000 ),symbols=['H']) #6
 image_structure_list = get_structure_list_from_folder("data/neb-data", s)
 images = TrajectoryData(image_structure_list)
 
-## s = structure
-## images=TrajectoryData([s,s,s])
+# Lua script
+absname = op.abspath(
+        op.join(op.dirname(__file__), "data/neb-data/neb_with_restart-new.lua"))
+lua_script = SinglefileData(absname)
+
 
 #The parameters
-parameters = Dict(
-    dict={
-        'xc-functional': 'LDA',
-        'xc-authors': 'CA',
-        'max-scfiterations': 50,
-        'dm-numberpulay': 4,
-        'dm-mixingweight': 0.3,
-        'dm-tolerance': 1.e-3,
-        'Solution-method': 'diagon',
-        'electronic-temperature': '25 meV',
-        'write-forces': True,
+parameters = Dict(dict={
+   "mesh-cutoff": "50 Ry",
+   "dm-tolerance": "0.0001",
+   "DM-NumberPulay ":  "3",
+   "DM-History-Depth":  "0",
+   "SCF-Mixer-weight":  "0.02",
+   "SCF-Mix":   "density",
+   "SCF-Mixer-kick":  "35",
+   "MD-VariableCell":  "F",
+   "MD-MaxCGDispl":  "0.3 Bohr",
+   "MD-MaxForceTol":  " 0.04000 eV/Ang",
+    "%block Geometry-Constraints":
+    """
+    atom [1 -- 4]
+    %endblock Geometry-Constraints"""
     })
 
-#The basis set
 basis = Dict(dict={
-'pao-energy-shift': '300 meV'
-    })
+  "%block PAO-Basis":
+    """
+ O                     2                    # Species label, number of l-shells
+ n=2   0   2                         # n, l, Nzeta
+   3.305      2.510
+   1.000      1.000
+ n=2   1   2 P   1                   # n, l, Nzeta, Polarization, NzetaPol
+   3.937      2.542
+   1.000      1.000
+H                     1                    # Species label, number of l-shells
+ n=1   0   2 P   1                   # n, l, Nzeta, Polarization, NzetaPol
+   4.828      3.855
+   1.000      1.000
+
+    %endblock PAO-Basis""",
+})
+
 
 #The kpoints
 #kpoints = KpointsData()
@@ -102,7 +123,7 @@ for fname, kinds in raw_pseudos:
 
 #Resources
 options = {
-    "max_wallclock_seconds": 360,
+    "max_wallclock_seconds": 3600,
     'withmpi': True,
     "resources": {
         "num_machines": 1,
@@ -118,6 +139,7 @@ inputs = {
     'parameters': parameters,
     'code': code,
     'basis': basis,
+    'lua_script': lua_script,
     'neb_input_images': images,
     'pseudos': pseudos_dict,
     'metadata': {

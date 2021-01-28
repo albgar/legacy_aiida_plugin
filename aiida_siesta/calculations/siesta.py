@@ -213,7 +213,8 @@ class SiestaCalculation(CalcJob):
         if lua_script is not None:
             input_params.update({'md-type-of-run': 'Lua'})
             input_params.update({'lua-script': lua_script.filename})
-            
+            local_copy_list.append((lua_script.uuid, lua_script.filename, lua_script.filename))
+
         # NOTES:
         # 1) The lattice-constant parameter must be 1.0 Ang to impose the units and consider
         #   that the dimenstions of the lattice vectors are already correct with no need of alat.

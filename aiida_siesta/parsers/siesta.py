@@ -360,14 +360,30 @@ class SiestaParser(Parser):
             folder_path = output_folder._repository._get_base_folder().abspath
             struct_list = get_structure_list_from_folder(folder_path, self.node.inputs.structure)
 
-            if len(struct_list) > 0:
-                traj = TrajectoryData(struct_list)
-                self.out('neb_output_images', traj)
-            else:
+
+            if len(struct_list) == 0:
                 self.logger.warning("No .xyz files retrieved")
                 return self.exit_codes.NO_NEB_XYZ_FILES
 
-        
+            traj = TrajectoryData(struct_list)
+
+            # Generate NEB results information and attach to images array
+            neb_results_file = self.node.get_option('neb_results_file')
+            if neb_results_file in output_folder._repository.list_object_names():
+                neb_results_path = os.path.join(folder_path, neb_results_file)
+
+                from aiida_siesta.utils.neb import parse_neb_results
+                annotated_traj = parse_neb_results(neb_results_path,traj)
+                
+                self.out('neb_output_images', annotated_traj)
+                
+            else:
+                self.logger.warning("No NEB result file retrieved")
+                ## return self.exit_codes.NO_NEB_RESULT_FILE
+                self.out('neb_output_images', traj)
+
+            
+                
         #Attempt to parse the ion files.
         from aiida_siesta.data.ion import IonData
         ions = {}

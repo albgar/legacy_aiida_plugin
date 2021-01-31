@@ -53,6 +53,7 @@ s_final.append_atom(position=(   alat*0.250, alat*0.250, alat*0.000),symbols='H'
 # Lua script
 absname = op.abspath(
         op.join(op.dirname(__file__), "../plugins/siesta/data/neb-data/neb_with_restart-new.lua"))
+n_images_in_script=5
 lua_script = SinglefileData(absname)
 
 
@@ -135,11 +136,30 @@ options = {
     }
 }
 
+#
+# For finer-grained compatibility with script
+# 
+options_neb = {
+    'neb_results_file': 'NEB.results',
+    'neb_xyz_prefix': 'images_',
+    "max_wallclock_seconds": 3600,
+    'withmpi': True,
+    "resources": {
+        "num_machines": 1,
+        "num_mpiprocs_per_machine": 2,
+    }
+}
+
 
 
 inputs = {
+
+    'initial_structure': s_initial,
+    'final_structure': s_final,
+    'neb_script': lua_script,
+    'n_images': Int(n_images_in_script),
+    
     'initial': {
-        'structure': s_initial,
         'parameters': endpoint_parameters,
         'code': code,
         'basis': basis,
@@ -148,7 +168,6 @@ inputs = {
         'options': Dict(dict=options)
     },
     'final': {
-        'structure': s_final,
         'parameters': endpoint_parameters,
         'code': code,
         'basis': basis,
@@ -157,13 +176,12 @@ inputs = {
         'options': Dict(dict=options)
     },
     'neb': {
-        'structure': s_initial,      # reference
+        'structure': s_initial,      # for 'kinds' reference
         'parameters': neb_parameters,
         'code': code,
         'basis': basis,
         'kpoints': kpoints_neb,
         'pseudos': pseudos_dict,
-        'lua_script': lua_script,
         'metadata': {
             "label": "H interstitial migration in Si",
             'options': options,

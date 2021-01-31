@@ -29,6 +29,9 @@ class NEBWorkChain(WorkChain):
                    help='Final Structure in Path')
         spec.input('n_images', valid_type=orm.Int,
                    help='Number of (internal) images  in Path')
+        spec.input('interpolation_method', valid_type=orm.Str,
+                   required=False,
+                   help='Interpolation method for starting path')
         spec.input('neb_script', valid_type=orm.SinglefileData,
                    help='Lua script for NEB engine')
 
@@ -90,9 +93,17 @@ class NEBWorkChain(WorkChain):
         s_final = final_wk.outputs.output_structure
 
         n_images = self.inputs.n_images.value
-        images_list = interpolate_two_structures_ase(s_initial,
-                                                     s_final,
-                                                     n_images)
+        
+        if 'interpolation_method' not in self.inputs:
+            interp_method = 'idpp'
+        else:
+            interp_method = self.inputs.interpolation_method.value
+
+            images_list = interpolate_two_structures_ase(s_initial,
+                                                         s_final,
+                                                         n_images,
+                                                         interp_method
+        )
         self.ctx.input_images = orm.TrajectoryData(images_list)
         
     def run_neb(self):

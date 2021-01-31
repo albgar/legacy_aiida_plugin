@@ -402,18 +402,12 @@ class SiestaCalculation(CalcJob):
         #  -- check that the lua script is NEB-capable...
         #  -- if needed, replace k and #images in the Lua script...
         if neb_input_images is not None:
-            # get kinds list from reference structure, in case they are not just symbols
-            kinds = structure.kinds
+
+            from aiida_siesta.utils.xyz_utils import write_xyz_files_from_trajectory
+
             neb_image_prefix = self.inputs.metadata.options.neb_xyz_prefix
-            
-            from aiida_siesta.utils.xyz_utils import write_xyz_file_from_structure
-            # loop over structures
-            for i in range(neb_input_images.numsteps):
-                s_image = neb_input_images.get_step_structure(i,custom_kinds=kinds)
-                # write a xyz file with a standard prefix in the folder
-                # Note that currently we do not want the labels in these files
-                filename= folder.get_abs_path("{}{}.xyz".format(neb_image_prefix,i))
-                write_xyz_file_from_structure(s_image,filename,labels=False)
+            write_xyz_files_from_trajectory(neb_input_images, structure,
+                                            neb_image_prefix, labels=False)
 
         
         # ====================== FDF file creation ========================
@@ -495,7 +489,8 @@ class SiestaCalculation(CalcJob):
 
         # Retrieve xyz files if doing NEB
         if neb_input_images is not None:
-            calcinfo.retrieve_list.append("image*.xyz")
+            neb_image_prefix = self.inputs.metadata.options.neb_xyz_prefix
+            calcinfo.retrieve_list.append(neb_image__prefix + "*.xyz")
             if lua_script is not None:
                 calcinfo.retrieve_list.append(metadataoption.neb_results_file)
             

@@ -59,4 +59,25 @@ def write_xyz_file_from_structure(s, filename, labels=True):
                f.write("{} {} {}\n".format(pos[0],pos[1],pos[2]))
                
 
-    
+def write_xyz_files_from_trajectory(t, ref_struct, pattern, labels = True ):
+
+   """
+   Given a trajectory and a file pattern, write
+   xyz files from trajectory
+
+   :param: t: TrajectoryData object
+   :param: ref_struct: Needed for kinds list
+   :pattern: string to form the filenames
+   :labels: whether to print the atomic labels or not
+   """
+   kinds = ref_struct.kinds
+
+   # loop over structures
+   for i in range(t.numsteps):
+       s = t.get_step_structure(i,custom_kinds=kinds)
+       # write a xyz file with a standard prefix in the folder
+       # Note that currently we do not want the labels in these files
+       filename= pattern + "{}.xyz".format(i)
+       write_xyz_file_from_structure(s,filename,labels=labels)
+
+   

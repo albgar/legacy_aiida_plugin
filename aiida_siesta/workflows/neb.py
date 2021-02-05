@@ -2,7 +2,7 @@ from aiida import orm
 from aiida.engine import WorkChain, calcfunction, ToContext
 from aiida.common import AttributeDict
 from aiida_siesta.workflows.base import SiestaBaseWorkChain
-from aiida_siesta.calculations.siesta import SiestaCalculation
+from aiida_siesta.workflows.neb_base import SiestaBaseNEBWorkChain
 from aiida_siesta.calculations.tkdict import FDFDict
 from aiida_siesta.utils.interpol import interpolate_two_structures_ase
 
@@ -19,9 +19,7 @@ class NEBWorkChain(WorkChain):
         super().define(spec)
         spec.expose_inputs(SiestaBaseWorkChain, exclude=('structure',), namespace="initial")
         spec.expose_inputs(SiestaBaseWorkChain, exclude=('structure',), namespace="final")
-        spec.expose_inputs(SiestaCalculation,
-                           exclude=('lua_script','neb_input_images'),
-                           namespace="neb")
+        spec.expose_inputs(SiestaBaseNEBWorkChain, exclude=('starting_path',), namespace="neb")
 
         spec.input('initial_structure', valid_type=orm.StructureData,
                    help='Initial Structure in Path')
@@ -29,8 +27,6 @@ class NEBWorkChain(WorkChain):
                    help='Final Structure in Path')
         spec.input('n_images', valid_type=orm.Int,
                    help='Number of (internal) images  in Path')
-        spec.input('neb_script', valid_type=orm.SinglefileData,
-                   help='Lua script for NEB engine')
 
         # Note: in this version, n_images must be compatible
         # with the Lua script settings.. 
@@ -93,20 +89,27 @@ class NEBWorkChain(WorkChain):
         images_list = interpolate_two_structures_ase(s_initial,
                                                      s_final,
                                                      n_images)
-        self.ctx.input_images = orm.TrajectoryData(images_list)
+        path_object = orm.TrajectoryData(images_list)
+        path_object.set_attribute('kinds', s_initial.kinds)
+        
+        self.ctx.path = path_object
+
+        self.report(f'Generated starting path for NEB.')
+        
         
     def run_neb(self):
         """
         .
         """
-        inputs = self.exposed_inputs(SiestaCalculation, namespace='neb')
+        inputs = self.exposed_inputs(SiestaBaseNEBCalculation, namespace='neb')
 
-        inputs['neb_input_images'] = self.ctx.input_images
-        inputs['lua_script'] = self.inputs.neb_script
+        print(inputs)
+        
+        inputs['starting_path'] = self.ctx.path
 
-        running = self.submit(SiestaCalculation, **inputs)
-        #running = self.submit(SiestaCalculation, **inputs)
-        self.report(f'Launched SiestaCalculation<{running.pk}> for NEB.')
+        running = self.submit(SiestaBaseNEBWorkchain, **inputs)
+
+        self.report(f'Launched SiestaBaseNEBWorkchain<{running.pk}> for NEB.')
 
         return ToContext(neb_wk=running)
 
@@ -117,7 +120,7 @@ class NEBWorkChain(WorkChain):
         else:
             outps = self.ctx.neb_wk.outputs
 
-        neb_output = outps['neb_output_images']
+        neb_output = outps['neb_output_package']
         n_iterations = neb_output.get_attribute('neb_iterations')
         
         self.out('neb_output_package', neb_output)

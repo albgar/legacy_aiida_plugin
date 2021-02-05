@@ -11,7 +11,7 @@ from aiida.orm import (Dict, StructureData, KpointsData)
 from aiida.orm import SinglefileData
 
 from aiida_siesta.data.psf import PsfData
-from aiida_siesta.workflows.neb import NEBWorkChain
+from aiida_siesta.workflows.neb_base import SiestaBaseNEBWorkChain
 
 from aiida_siesta.utils.structures import clone_aiida_structure
 
@@ -50,12 +50,18 @@ s_final = clone_aiida_structure(host)
 s_final.append_atom(position=(   alat*0.250, alat*0.250, alat*0.000),symbols='H')
 
 
+
 # Lua script
 absname = op.abspath(
         op.join(op.dirname(__file__), "../plugins/siesta/data/neb-data/neb_with_restart-new.lua"))
 n_images_in_script=5
 lua_script = SinglefileData(absname)
 
+        images_list = interpolate_two_structures_ase(s_initial,
+                                                     s_final,
+                                                     n_images_in_script)
+        input_images = orm.TrajectoryData(images_list)
+        input_images.set_attribute('kinds',s_initial.kinds)
 
 # Parameters: very coarse for speed of test
 # Note the all the Si atoms are fixed...
@@ -70,7 +76,7 @@ parameters = dict={
    "SCF-Mixer-kick":  "35",
    "MD-VariableCell":  "F",
    "MD-MaxCGDispl":  "0.3 Bohr",
-   "MD-MaxForceTol":  " 0.06000 eV/Ang"
+   "MD-MaxForceTol":  " 0.04000 eV/Ang"
     }
 
 constraints = dict={
@@ -120,9 +126,9 @@ for fname, kinds in raw_pseudos:
         op.join(op.dirname(__file__), "../plugins/siesta/data/sample-psf-family", fname))
     pseudo, created = PsfData.get_or_create(absname, use_first=True)
     if created:
-        print("Created the pseudo for {}".format(kinds))
+        print("\nCreated the pseudo for {}".format(kinds))
     else:
-        print("Using the pseudo for {} from DB: {}".format(kinds, pseudo.pk))
+        print("\nUsing the pseudo for {} from DB: {}".format(kinds, pseudo.pk))
     for j in kinds:
         pseudos_dict[j]=pseudo
 
@@ -154,9 +160,10 @@ options_neb = {
 
 inputs = {
 
-     'initial_structure': s_initial,
-     'final_structure': s_final,
-     'n_images': Int(n_images_in_script),
+    'initial_structure': s_initial,
+    'final_structure': s_final,
+    'neb_script': lua_script,
+    'n_images': Int(n_images_in_script),
     
     'initial': {
         'parameters': endpoint_parameters,
@@ -175,13 +182,16 @@ inputs = {
         'options': Dict(dict=options)
     },
     'neb': {
-        'neb_script': lua_script,
+        'structure': s_initial,      # for 'kinds' reference
         'parameters': neb_parameters,
         'code': code,
         'basis': basis,
         'kpoints': kpoints_neb,
         'pseudos': pseudos_dict,
-        'options': Dict(dict=options_neb)
+        'metadata': {
+            "label": "H interstitial migration in Si",
+            'options': options,
+        }
     },
         
 }

@@ -1,5 +1,5 @@
 {
-    "version": "Dev-post1.1.1-neb",
+    "version": "Dev-post1.1.1-neb-2",
     "name": "aiida-siesta",
     "url": "https://github.com/siesta-project/aiida_siesta_plugin",
     "keywords": ["aiida", "siesta", "dft"],
@@ -51,6 +51,7 @@
             "siesta.base = aiida_siesta.workflows.base:SiestaBaseWorkChain",
 	    "siesta.eos = aiida_siesta.workflows.eos:EqOfStateFixedCellShape",
 	    "siesta.neb = aiida_siesta.workflows.neb:NEBWorkChain",
+	    "siesta.baseneb = aiida_siesta.workflows.neb_base:SiestaBaseNEBWorkChain",
 	    "siesta.interstitial = aiida_siesta.workflows.interstitial_barrier:InterstitialBarrierWorkChain",
 	    "siesta.bandgap = aiida_siesta.workflows.bandgap:BandgapWorkChain",
             "siesta.stm = aiida_siesta.workflows.stm:SiestaSTMWorkChain",

@@ -133,10 +133,10 @@ options = {
 
 #
 # For finer-grained compatibility with script
-# 
+# but CHECK
 options_neb = {
     'neb_results_file': 'NEB.results',
-    'neb_xyz_prefix': 'images_',
+    'neb_xyz_prefix': 'image_',
     "max_wallclock_seconds": 3600,
     'withmpi': True,
     "resources": {
@@ -161,23 +161,19 @@ inputs = {
     'interstitial_symbol': Str(interstitial_symbol),
     'initial_position': List(list=initial_position),
     'final_position':   List(list=final_position),
-
-    'neb_script': lua_script,
     'n_images': Int(n_images_in_script),
-    
+
     'initial': endpoint_inputs,
     'final': endpoint_inputs,
 
     'neb': {
+        'neb_script': lua_script,
         'parameters': neb_parameters,
         'code': code,
         'basis': basis,
         'kpoints': kpoints_neb,
         'pseudos': pseudos_dict,
-        'metadata': {
-            "label": "H interstitial migration in Si",
-            'options': options,
-        }
+        'options': Dict(dict=options_neb)
     },
         
 }

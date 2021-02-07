@@ -90,7 +90,12 @@ class NEBWorkChain(WorkChain):
                                                      s_final,
                                                      n_images)
         path_object = orm.TrajectoryData(images_list)
-        path_object.set_attribute('kinds', s_initial.kinds)
+        #
+        # Use a 'serializable' dictionary instead of the 
+        # actual kinds list
+        #
+        _kinds_raw = [ k.get_raw() for k in s_initial.kinds ]
+        path_object.set_attribute('kinds', _kinds_raw)
         
         self.ctx.path = path_object
 
@@ -101,15 +106,15 @@ class NEBWorkChain(WorkChain):
         """
         .
         """
-        inputs = self.exposed_inputs(SiestaBaseNEBCalculation, namespace='neb')
+        inputs = self.exposed_inputs(SiestaBaseNEBWorkChain, namespace='neb')
 
         print(inputs)
         
         inputs['starting_path'] = self.ctx.path
 
-        running = self.submit(SiestaBaseNEBWorkchain, **inputs)
+        running = self.submit(SiestaBaseNEBWorkChain, **inputs)
 
-        self.report(f'Launched SiestaBaseNEBWorkchain<{running.pk}> for NEB.')
+        self.report(f'Launched SiestaBaseNEBWorkChain<{running.pk}> for NEB.')
 
         return ToContext(neb_wk=running)
 

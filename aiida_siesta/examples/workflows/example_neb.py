@@ -138,10 +138,10 @@ options = {
 
 #
 # For finer-grained compatibility with script
-# 
+# But CHECK! -- better put in a config.lua file
 options_neb = {
     'neb_results_file': 'NEB.results',
-    'neb_xyz_prefix': 'images_',
+    'neb_xyz_prefix': 'image_',
     "max_wallclock_seconds": 3600,
     'withmpi': True,
     "resources": {

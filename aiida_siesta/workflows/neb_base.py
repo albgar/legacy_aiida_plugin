@@ -1,7 +1,7 @@
 from aiida import orm
 from aiida.engine import WorkChain, calcfunction, ToContext
 from aiida_siesta.calculations.siesta import SiestaCalculation
-
+from aiida.orm.nodes.data.structure import Kind
 
 class SiestaBaseNEBWorkChain(WorkChain):
 
@@ -72,11 +72,14 @@ class SiestaBaseNEBWorkChain(WorkChain):
         # ... further "smoothness" tests could be implemented if needed
         
         try:
-            _kinds = path.get_attribute('kinds')
+            _kinds_raw = path.get_attribute('kinds')
         except AttributeError:
             self.report('No kinds attribute found in TrajectoryData object')
             return self.exit_codes.ERROR_PATH_SPEC
 
+        # Create proper kinds list from list of raw dictionaries
+        _kinds = [ Kind(raw=kr) for kr in _kinds_raw]
+        
         ref_structure = path.get_step_structure(0,custom_kinds=_kinds)
         
         self.ctx.reference_structure = ref_structure
@@ -97,8 +100,8 @@ class SiestaBaseNEBWorkChain(WorkChain):
         # Note this
         #
         inputs['metadata'] = {
-            "label": "H interstitial migration in Si",
-            'options': self.input.options.get_dict(),
+            "label": "NEB calculation",
+            'options': self.inputs.options.get_dict(),
          }
 
         running = self.submit(SiestaCalculation, **inputs)

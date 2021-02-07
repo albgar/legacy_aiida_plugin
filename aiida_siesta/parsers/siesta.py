@@ -352,6 +352,8 @@ class SiestaParser(Parser):
 
         #
         # Build a trajectory object from xyz files in retrieved folder
+        # This might be better done by a client workchain, looking directly
+        # into the 'retrieved' output
         #
         if 'neb_input_images' in self.node.inputs:
             from aiida.orm import TrajectoryData
@@ -374,7 +376,11 @@ class SiestaParser(Parser):
 
                 from aiida_siesta.utils.neb import parse_neb_results
                 annotated_traj = parse_neb_results(neb_results_path,traj)
-                
+
+                ref_structure = self.node.inputs.structure
+                _kinds_raw = [ k.get_raw() for k in ref_structure.kinds ]
+                annotated_traj.set_attribute('kinds', _kinds_raw)
+
                 self.out('neb_output_images', annotated_traj)
                 
             else:

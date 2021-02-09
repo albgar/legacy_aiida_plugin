@@ -1,12 +1,19 @@
 #
 # Simple parser for xyz file
 #
-def get_positions_from_xyz_file(file):
+def get_positions_from_xyz_file(file, natoms=None):
 
     positions = []
     with open(file,'r') as fh:
         lines=fh.readlines()
-        for line in lines[2:]:
+        
+        number_of_atoms = len(lines)-2
+        if natoms is not None:
+            if natoms > number_of_atoms:
+                raise ValueError
+            number_of_atoms = natoms
+            
+        for line in lines[2:number_of_atoms+1]:
             parts = line.split()
             # Support the case in which the species label is present
             if len(parts) == 4:
@@ -19,15 +26,23 @@ def get_positions_from_xyz_file(file):
     return positions
 
 def get_structure_list_from_folder(folder,ref_struct):
-
+    """
+    Builds a list of structures from a set of .xyz files in a folder.
+    :param: folder  The folder
+    :param: ref_struct A reference structure to provide a basic template
+    """
+    
     import glob
 
     xyz_list = glob.glob("{}/*.xyz".format(folder))
     xyz_list.sort()
 
+    # We will get this many atoms from the xyz files
+    natoms = len(ref_struct.sites)
+    
     structure_list = []
     for file in xyz_list:
-        positions = get_positions_from_xyz_file(file)
+        positions = get_positions_from_xyz_file(file, natoms)
         s = ref_struct.clone()
         s.reset_sites_positions(positions)
         structure_list.append(s)

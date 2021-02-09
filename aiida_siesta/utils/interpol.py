@@ -62,7 +62,7 @@ def interpolate_two_structures_ase(s1, s2, n_images, interp_method="idpp"):
     images.append(ase2)
 
     neb=NEB(images)
-    neb.interpolate(interp_method)
+    neb.interpolate(method=interp_method)
 
     slist = []
     # Structure list

@@ -444,23 +444,27 @@ class SiestaCalculation(CalcJob):
                     
             neb_image_prefix = self.inputs.metadata.options.neb_xyz_prefix
             
-            from aiida_siesta.utils.xyz_utils import write_xyz_file_from_structure
-            
             # loop over structures
             for i in range(neb_input_images.numsteps):
                 s_image = neb_input_images.get_step_structure(i,custom_kinds=kinds)
                 # write a xyz file with a standard prefix in the folder
                 # Note that currently we do not want the labels in these files
                 filename= folder.get_abs_path("{}{}.xyz".format(neb_image_prefix,i))
-                write_xyz_file_from_structure(s_image,filename,labels=False)
-
+                positions = [ s.position for s in s_image.sites]
                 # Possibly append ghost atoms (currently needed)
                 if floating is not None:
-                    with open(filename,"a") as f:
-                        for pos in ghost_positions:
-                            f.write("{} {} {}\n".format(pos[0],pos[1],pos[2]))
+                    for pos in ghost_positions:
+                        positions.append((pos[0],pos[1],pos[2]))
 
-        
+                with open(filename,"w") as f:
+                    #
+                    # Write first two lines
+                    #
+                    f.write("{}\n".format(len(positions)))
+                    f.write("----- \n")
+                    for pos in positions:
+                        f.write("{} {} {}\n".format(pos[0],pos[1],pos[2]))
+
         # ====================== FDF file creation ========================
 
         # To have easy access to inputs metadata options

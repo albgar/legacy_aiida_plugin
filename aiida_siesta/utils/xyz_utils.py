@@ -13,7 +13,7 @@ def get_positions_from_xyz_file(file, natoms=None):
                 raise ValueError
             number_of_atoms = natoms
             
-        for line in lines[2:number_of_atoms+1]:
+        for line in lines[2:number_of_atoms+2]:
             parts = line.split()
             # Support the case in which the species label is present
             if len(parts) == 4:

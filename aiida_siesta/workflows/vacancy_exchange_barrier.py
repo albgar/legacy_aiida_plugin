@@ -4,6 +4,8 @@ from aiida_siesta.workflows.neb_base import SiestaBaseNEBWorkChain
 from aiida_siesta.workflows.base import SiestaBaseWorkChain
 
 from aiida.orm.nodes.data.structure import Site
+from aiida_siesta.utils.structures import find_mid_path_position
+from aiida_siesta.utils.structures import find_intermediate_structure
 from aiida_siesta.utils.interpol import interpolate_two_structures_ase
 
 class VacancyExchangeBarrierWorkChain(WorkChain):
@@ -154,16 +156,55 @@ class VacancyExchangeBarrierWorkChain(WorkChain):
         s_initial = initial_wk.outputs.output_structure
         s_final = final_wk.outputs.output_structure
 
+
         n_images = self.inputs.n_images.value
 
         #
         # Add here any heuristics, before handling the
         # path for further refinement
-        # For now, interpolation with idpp method
 
-        images_list = interpolate_two_structures_ase(s_initial,
-                                                     s_final,
-                                                     n_images)
+        if 'migration_direction' in self.inputs:
+
+            migration_direction = self.inputs.migration_direction.get_list()
+
+            pos1 = s_initial.sites[self.ctx.atom_site_index].position
+            pos2 = self.ctx.vacancy_position
+            atom_mid_path_position = find_mid_path_position(s_initial,
+                                                            pos1, pos2,
+                                                            migration_direction)
+            self.report(f"Using mid-path point {atom_mid_path_position}")
+            
+            s_intermediate = find_intermediate_structure(s_initial,
+                                                         self.ctx.atom_site_index,
+                                                         atom_mid_path_position)
+    
+            # The starting_path is now built from two sections
+            # We assume that the number of internal images is odd,
+            # so that n_images // 2 is the number of internal images
+            # of each section
+
+            first_list = interpolate_two_structures_ase(s_initial,
+                                                        s_intermediate,
+                                                        n_images//2)
+            second_list = interpolate_two_structures_ase(s_intermediate,
+                                                         s_final,
+                                                         n_images//2)
+
+            #
+            # Remove duplicate central point
+            #
+            images_list = first_list[:-1] + second_list
+        
+            if len(images_list) != n_images+2:
+                self.report(f"Number of images: {n_images} /= list length")
+                return self.exit_codes.ERROR_CONFIG
+
+        else:
+            # Just normal (idpp) interpolation
+            images_list = interpolate_two_structures_ase(s_initial,
+                                                        s_final,
+                                                        n_images)
+            
             
         #
         # We might need a more general refiner, starting

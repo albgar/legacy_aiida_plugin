@@ -54,6 +54,7 @@
 	    "siesta.baseneb = aiida_siesta.workflows.neb_base:SiestaBaseNEBWorkChain",
 	    "siesta.interstitial = aiida_siesta.workflows.interstitial_barrier:InterstitialBarrierWorkChain",
 	    "siesta.exchange = aiida_siesta.workflows.exchange_barrier:ExchangeBarrierWorkChain",
+	    "siesta.vacancy_exchange = aiida_siesta.workflows.vacancy_exchange_barrier:VacancyExchangeBarrierWorkChain",
 	    "siesta.bandgap = aiida_siesta.workflows.bandgap:BandgapWorkChain",
             "siesta.stm = aiida_siesta.workflows.stm:SiestaSTMWorkChain",
 	    "siesta.iterator = aiida_siesta.workflows.iterate:SiestaIterator",

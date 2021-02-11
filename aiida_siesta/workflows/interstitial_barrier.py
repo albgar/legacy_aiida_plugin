@@ -1,9 +1,30 @@
 from aiida import orm
-from aiida.engine import WorkChain, ToContext
+from aiida.engine import WorkChain, ToContext, calcfunction
 from aiida_siesta.workflows.neb_base import SiestaBaseNEBWorkChain
 from aiida_siesta.workflows.base import SiestaBaseWorkChain
 from aiida_siesta.utils.structures import clone_aiida_structure
 from aiida_siesta.utils.interpol import interpolate_two_structures_ase
+
+@calcfunction
+def get_path_from_ends(s1, s2, nimages):
+    """
+    Wrapper calcfunction to keep provenance
+    :param: s1, s2 : StructureData objects
+    :param: nimages: Int object
+    """
+
+    images_list = interpolate_two_structures_ase(s1,
+                                                 s2,
+                                                 nimages.value)
+    path_object = orm.TrajectoryData(images_list)
+    #
+    # Use a 'serializable' dictionary instead of the 
+    # actual kinds list
+    #
+    _kinds_raw = [ k.get_raw() for k in s1.kinds ]
+    path_object.set_attribute('kinds', _kinds_raw)
+        
+    return path_object
 
 class InterstitialBarrierWorkChain(WorkChain):
 
@@ -153,19 +174,10 @@ class InterstitialBarrierWorkChain(WorkChain):
         # actual path, and not just end-points
         #
         # refined_path = refine_neb_path(starting_path)
-        
-        images_list = interpolate_two_structures_ase(s_initial,
-                                                     s_final,
-                                                     n_images)
-        path_object = orm.TrajectoryData(images_list)
-        #
-        # Use a 'serializable' dictionary instead of the 
-        # actual kinds list
-        #
-        _kinds_raw = [ k.get_raw() for k in s_initial.kinds ]
-        path_object.set_attribute('kinds', _kinds_raw)
-        
-        self.ctx.path = path_object
+
+        self.ctx.path = get_path_from_ends(s_initial,
+                                           s_final,
+                                           orm.Int(n_images))
 
         self.report(f'Generated starting path for NEB.')
         

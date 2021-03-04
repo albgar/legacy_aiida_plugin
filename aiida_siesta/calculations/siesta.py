@@ -153,6 +153,7 @@ class SiestaCalculation(CalcJob):
         spec.inputs['metadata']['options']['output_filename'].default = cls._DEFAULT_OUTPUT_FILE
         spec.inputs['metadata']['options']['parser_name'].default = 'siesta.parser'
 
+        # Which validator is executed first? The one for 'basis', or this one?
         spec.inputs.validator = validate_inputs
 
         # Output nodes
@@ -163,7 +164,7 @@ class SiestaCalculation(CalcJob):
         spec.output('forces_and_stress', valid_type=ArrayData, required=False, help='Optional forces and stress')
         spec.output_namespace('ion_files', valid_type=IonData, dynamic=True, required=False)
 
-        # Option that allows acces through node.res should be existing output node and a Dict
+        # Option that allows access through node.res should be existing output node and a Dict
         spec.default_output_node = 'output_parameters'
 
         # Exit codes for specific errors. Useful for error handeling in workchains
@@ -219,7 +220,7 @@ class SiestaCalculation(CalcJob):
 
         code = self.inputs.code
 
-        #The validator add ploating states to the structure and saves it.
+        #The validator adds floating sites to the structure and saves it.
         structure, basis_dict, floating_species_names, ion_or_pseudo_str = self.initialize()
 
         ion_or_pseudo = self.inputs[ion_or_pseudo_str]
@@ -329,6 +330,7 @@ class SiestaCalculation(CalcJob):
                 file_name = kind.name + ".ion"
                 with folder.open(file_name, 'w', encoding='utf8') as handle:
                     handle.write(psp_or_ion.get_content_ascii_format())
+                # Optionally add the above file to the "ignore provenance" list
             if isinstance(psp_or_ion, PsfData):
                 local_copy_list.append((psp_or_ion.uuid, psp_or_ion.filename, kind.name + ".psf"))
             if isinstance(psp_or_ion, PsmlData):

@@ -224,6 +224,11 @@ class IonData(SinglefileData):
         string = string + root.find("lmax_basis").text + root.find("norbs_nl").text + "\n"
         string = string + root.find("lmax_projs").text + root.find("nprojs_nl").text + "#\n"
 
+        # NOTE: You should attempt to read the 'lj_projs' element (new in 'master'),
+        # and if 'true', read also the 'j' values. Sisl might need to be updated first.
+        # This is only relevant for versions of Siesta that can do full SOC, and for the case
+        # of .ion(.xml) files that contain lj projectors.
+        
         string = string + "# PAOs:__________________________\n"
         for orbital in root.find("paos"):
             string = string + orbital.attrib["l"] + orbital.attrib["n"] + orbital.attrib["z"] + orbital.attrib[

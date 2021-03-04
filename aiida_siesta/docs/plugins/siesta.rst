@@ -241,21 +241,29 @@ Some examples are referenced in the following list. They are located in the fold
 
 * **ions**, input namespace of class :py:class:`IonData  <aiida_siesta.data.ion.IonfData>`, *Optional*
 
-  The `IonData  <aiida_siesta.data.ion.IonData>` have been implemented along the lines of the `PsfData`
-  to host information on the quantity that in siesta terminology is called "ion". This is a single entity
-  containing both the pseudo and basis specifications through the explicit definition of the orbitals
-  used for the expansion of the Kohn-Sham wave-functions. The class `IonData` stores ".ion.xml" files
-  and it also provide a method `get_content_ascii_format` that translates the content of an ".ion.xml" into
-  an ".ion" file format (the older ascii format for ions).
+  The class `IonData <aiida_siesta.data.ion.IonData>` has been
+  implemented along the lines of the `PsfData` class to carry
+  information on the entity that in siesta terminology is called
+  "ion", and that packages the set of basis orbitals and KB projectors
+  for a given species. It contains also some extra metadata. The class
+  `IonData` stores ".ion.xml" files and it also provides a method
+  `get_content_ascii_format` that translates the content of an
+  ".ion.xml" into an ".ion" file format, which is the only one
+  currently accepted by Siesta.
 
-  When this input is present, the plugin takes care of coping in the running folder the ".ion"
-  files and set the "user_basis" siesta keyword to True. Moreover, when this input is present,
-  **pseudos** and **basis** inputs are ignored (except possible `floating_orbitals` defined in the basis).
+  When this input is present, the plugin takes care of copying in the running folder the ".ion"
+  files and setting the "user_basis" siesta keyword to True. Moreover, when this input is present,
+  **pseudos** and **basis** inputs are ignored (except for any `floating_orbitals` defined in the basis).
 
-  One ions file per atomic element is required. Several species (in the
+  One ion file per atomic element is required. Several species (in the
   Siesta sense, which allows the same element to be treated differently
-  according to its environment) can share the same ion. For the example
-  above::
+  according to its environment) can share the same ion file. [This
+  does not make sense: they can only be different if the pseudo, or
+  the orbitals, are different, but everything is packaged in the .ion
+  file... We can anyway still allow lists of labels as below, in case that
+  somebody wants to turn off the 'differences' without changing the
+  structure definition, but we should not give this possibly
+  misleading example] For the example  above::
 
     import os
     from aiida_siesta.data.ion import IonData
@@ -427,7 +435,7 @@ The inputs (defined as in the previous section) are passed to the builder::
         builder.code = code
         builder.structure = structure
         builder.parameters = parameters
-        builder.pseudos = pseudos_dict
+        builder.pseudos = pseudos_dict       # Or builder.ions = ....
         builder.basis = basis
         builder.kpoints = kpoints
         builder.bandskpoints = bandskpoints
@@ -586,14 +594,14 @@ accessed with the ``calculation.outputs`` method.
 * **ions**, :py:class:`IonData  <aiida.orm.IonData>`
 
   Instances of `IonData` can be used as inputs of a ``SiestaCalculation``, meaning ``aiida_siesta``
-  supports the use of user basis specified directly in ".ion" files. However,
-  most of the times, pseudos and basis are defined separately for a siesta run and the basis generation makes use
-  of internal siesta algorithms that translates high-level definitions (basis-sizes, split-norm, ...) into the
-  actual orbitals for the wave-function expansion. In these cases siesta produces an ".ion.xml" file 
+  supports the use of pre-packaged information in ".ion" files. However,
+  most of the time, pseudos and basis specifications are given separately for a siesta run, and the basis generation makes use
+  of internal siesta algorithms that translate high-level definitions (basis-sizes, split-norm, ...) into the
+  actual basis orbitals. In these cases siesta produces an ".ion.xml" file 
   for each species in the structure.
-  These files are parsed and stored into `IonData` instances that can be than easily reused for
-  subsequent calculations. From `IonData` instances also the explicit orbitals of the basis can be obtained.
-  One **ions** for each species is created and they will be outputted with the name ``ions_El`` where
+  These files are parsed and stored into `IonData` instances that can be then easily reused in
+  subsequent calculations. 
+  One **ions** for each species is created and they will be output with the name ``ions_El`` where
   ``El`` is the label of the species. 
 
   .. |br| raw:: html
